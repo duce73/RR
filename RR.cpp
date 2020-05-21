@@ -60,13 +60,45 @@ void create(int num){
 }
 
 
-void Run(){
-
+/*
+    进程运行
+*/
+void Run(int time){
+    running[0].restTime--;
+    printf("this is the %d time, this is the \"%c\" progress, and it is the %d time to be running.\n",
+                time,running[0].name,running[0].runTime - running[0].restTime);
 }
 
 
-void myPrint(){
+/*
+    每一次调度打印当前的队列的状态
+*/
+void myPrint(int readyFront,int readyTail,int stockedFront, int stockedTail, int exitFront, int exitTail){
+    printf("ready queue: ");
+    for(int i = readyFront; i < readyTail; i++){
+        printf("name: %c status: %d ",ready[i].name,ready[i].status);
+    }
 
+    printf("\nstocked queue:");
+    if(stockedTail - stockedFront == 0){
+        printf("there is no progress in stocked queue.");
+    }
+    else{
+        for(int i = stockedFront; i < stockedTail; i++){
+            printf("name: %c status: %d ",stocked[i].name,stocked[i].status);
+        }
+    }
+
+    printf("\nexit queue: ");
+    if(exitTail - exitFront == 0){
+        printf("there is no progress in exit queue.\n");
+    }
+    else{
+        for(int i = exitFront; i < exitTail; i++){
+            printf("name: %c status: %d ",exit[i].name,exit[i].status);
+        }
+        printf("\n");
+    }
 }
 
 void RR(int time,int num){
@@ -74,7 +106,7 @@ void RR(int time,int num){
     int stockFront = 0,stockTail = 0;
     int exitFront = 0, exitTail = 0;
 
-    for(int cpuTime = 0; cpuTime < time; cpuTime++){
+    for(int cpuTime = 1; cpuTime <= time; cpuTime++){
         /*
             判断new的进程是否到达，将到达的进程放入就绪队列
         */
@@ -88,13 +120,20 @@ void RR(int time,int num){
 
         /*
             判断阻塞态的进程是否结束等待事件，如果是，将其放入就绪队列中
+        
         */
-        if(stocked[stockFront].waitTime == 0){
-            ready[readyTail] = stocked[stockFront];
-            ready[readyTail].status = 1;
-            readyTail++;
-            stockFront++;
+        if(stockTail - stockFront > 0){
+            if(stocked[stockFront].waitTime == 0){
+                ready[readyTail] = stocked[stockFront];
+                ready[readyTail].status = 1;
+                readyTail++;
+                stockFront++;
+            }
+            else{
+                stocked[stockFront].waitTime--;
+            }
         }
+        
 
         /*
             根据轮询将就绪队列中的进程调入
@@ -103,10 +142,16 @@ void RR(int time,int num){
         running[0].status = 2;
         readyFront++;
 
+        
         /*
             进程运行
         */
-        Run();      //并对阻塞态进程进行处理
+        Run(cpuTime);
+
+        /*
+            对各个队列进行输出
+        */
+        myPrint(readyFront,readyTail,stockFront,stockTail,exitFront,exitTail);
 
         /*
             该进程运行完后，时间片用完进入exit完成队列
@@ -127,21 +172,24 @@ void RR(int time,int num){
         }
 
         /*
-            该进程结束时，遇到阻塞事件，转入阻塞队列
+            判断是否是有等待的进程，并且判断该进程是否进入阻塞队列
         */
-        if(running[0].whenWait == cpuTime){
-            stocked[stockTail] = running[0];
-            stocked[stockTail].status = 3;
-            stockTail++;
+        if(running[0].isWait == 1){
+            if(running[0].whenWait == 1){
+                stocked[stockTail] = running[0];
+                stocked[stockTail].status = 4;
+                stockTail++;
+            }
+            else{
+                ready[readyTail] = running[0];
+                ready[readyTail].status = 2;
+                ready[readyTail].whenWait--;
+                readyTail++;
+            }
         }
-
-        /*
-            每个时间片结束后，对各个状态的队列进行输出打印
-        */  
-        myPrint();
     }
-    
 }
+
 
 int main(void){
     int num = 0, time = 0;
